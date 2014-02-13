@@ -7,6 +7,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 public class HelloController {
 
     public static String COOKIE_TOKEN = "csrftoken";
+    public static HttpClient client;
 
     @RequestMapping(method = RequestMethod.GET)
     public String printWelcome(ModelMap model) {
@@ -53,6 +55,7 @@ public class HelloController {
         HttpContext localContext = new BasicHttpContext();
         localContext.setAttribute(HttpClientContext.COOKIE_STORE, cookieStore);
 
+        // Login request
         List<NameValuePair> urlParameters = new ArrayList<NameValuePair>();
         urlParameters.add(new BasicNameValuePair("BTN_LOGIN", "Test"));
         urlParameters.add(new BasicNameValuePair("LOGIN", "LS01406548"));
@@ -78,6 +81,7 @@ public class HelloController {
         String srchstr = getAttribute(htmlResult, "srchstr");
         System.out.println("srchstr=" + srchstr);
 
+        // Put data request
         List<NameValuePair> addedParameters = new ArrayList<NameValuePair>();
         addedParameters.add(new BasicNameValuePair("ADD_CDDATE", "08/02/2014"));
         addedParameters.add(new BasicNameValuePair("ADD_CDERR", ""));
@@ -85,18 +89,23 @@ public class HelloController {
         addedParameters.add(new BasicNameValuePair("ADD_CDV1", "0.2420"));
         addedParameters.add(new BasicNameValuePair("BTN_CDADD.x", "5"));
         addedParameters.add(new BasicNameValuePair("BTN_CDADD.y", "5"));
+        addedParameters.add(new BasicNameValuePair("CHANGE_NUMPAGE", "0"));
+        addedParameters.add(new BasicNameValuePair("SEARCH_NUMPAGE", "0"));
+        addedParameters.add(new BasicNameValuePair("SEARCHR_ALLDPU", "0"));
+        addedParameters.add(new BasicNameValuePair("SEARCH_DATES", "01/02/2014"));
+        addedParameters.add(new BasicNameValuePair("SEARCH_DATEPO", "13/02/2014"));
 
         addedParameters.add(new BasicNameValuePair("page", "11"));
         addedParameters.add(new BasicNameValuePair("srchhouse", "342"));
         addedParameters.add(new BasicNameValuePair("srchls", "202"));
-        addedParameters.add(new BasicNameValuePair("srchotv	", "-1"));
+        addedParameters.add(new BasicNameValuePair("srchotv", "-1"));
         addedParameters.add(new BasicNameValuePair("srchpu", "2317"));
         addedParameters.add(new BasicNameValuePair("srchrgn", "1"));
         addedParameters.add(new BasicNameValuePair("srchstr", "6"));
         addedParameters.add(new BasicNameValuePair("testid", "922"));
         addedParameters.add(new BasicNameValuePair("userid", "922"));
         try {
-            htmlResult = postRequest(urlParameters, localContext);
+            htmlResult = postRequest(addedParameters, localContext);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -107,17 +116,21 @@ public class HelloController {
     private String postRequest(List<NameValuePair> params, HttpContext context)
             throws ClientProtocolException, IOException {
         String url = "http://teplo.dn.ua:8383/FLPU/flpu";
-        HttpClient client = HttpClientBuilder.create().build();
+        if (client == null) {
+            client = HttpClientBuilder.create().build();
+        }
         HttpPost requestPost = new HttpPost(url);
 
         requestPost.addHeader("User-Agent", "Mozilla/5.0");
-        requestPost.addHeader("Accept",
-                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        requestPost.addHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
         requestPost.addHeader("Accept-Encoding", "gzip, deflate");
         requestPost.setEntity(new UrlEncodedFormEntity(params));
         HttpResponse response = null;
 
+        CookieStore store = (CookieStore) context.getAttribute(HttpClientContext.COOKIE_STORE);
+        System.out.println("Cookie before request: " + store.getCookies());
         response = client.execute(requestPost, context);
+
         System.out.println("Status: " + response.getStatusLine().getStatusCode());
         BufferedReader rd = new BufferedReader(new InputStreamReader(response.getEntity()
                 .getContent()));
@@ -128,10 +141,10 @@ public class HelloController {
             result.append(line);
         }
         System.out.println(result);
-        System.out.println("________________");
-        CookieStore store = (CookieStore) context.getAttribute(HttpClientContext.COOKIE_STORE);
-        List<Cookie> cookies = store.getCookies();
-        System.out.println("COOKIE: " + cookies.toString());
+
+        store = (CookieStore) context.getAttribute(HttpClientContext.COOKIE_STORE);
+        System.out.println("Cookie after request: " + store.getCookies());
+
         return result.toString();
     }
 
